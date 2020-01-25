@@ -1,26 +1,49 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, {useState} from 'react';
+import {BrowserRouter as Router, Route, Redirect} from 'react-router-dom';
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
-}
+import {loggedInUrls, loggedOutUrls} from './urls';
+import { Navbar} from './components';
+
+const App = () => {
+    const [loggedIn, setLoggedIn] = useState(false);
+    const [value, setValue] = useState(0);
+  
+    document.title = `AgriBlock - ${loggedIn ? loggedInUrls[value].name : loggedOutUrls[value].name}`;
+    return (
+        <>
+            <Router>
+                <Navbar tabs={loggedIn ? loggedInUrls : loggedOutUrls} value={value} setValue={setValue}>
+                    <Route
+                        exact
+                        path="/"
+                        component={() =>
+                            loggedIn ? <Redirect to={loggedInUrls[0].url} /> : <Redirect to={loggedOutUrls[0].url} />
+                        }
+                    />
+                    {loggedOutUrls.map((url, index) => (
+                        <Route
+                            key={index}
+                            component={props =>
+                                loggedIn ? <Redirect to={loggedInUrls[0].url} /> : <url.component props={props} />
+                            }
+                            exact
+                            path={url.url}
+                        />
+                    ))}
+                    {loggedInUrls.map((url, index) => (
+                        <Route
+                            key={index}
+                            component={props =>
+                                !loggedIn ? <Redirect to={loggedOutUrls[0].url} /> : <url.component props={props} />
+                            }
+                            exact
+                            path={url.url}
+                        />
+                    ))}
+                </Navbar>
+            </Router>
+        </>
+    );
+};
 
 export default App;
