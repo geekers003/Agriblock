@@ -21,3 +21,12 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+bin
+lib
+lib64
+*.sqlite3
+*.cfg
+share
+include
+
+.idea
