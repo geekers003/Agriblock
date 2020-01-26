@@ -10,7 +10,13 @@ export const loggedOutUrls = [
         url: '/login',
         component: Login,
         name: 'Sign In'
-    },
+    }
+].map(link => ({
+    ...link,
+    component: withSnackbar(link.component, link.name)
+}));
+
+export const loggedInUrls = [
     {
         url: '/home',
         component: Home,
@@ -22,16 +28,10 @@ export const loggedOutUrls = [
         name: 'Transactions'
     },
     {
-        url: '/deal',
+        url: '/buy',
         component: Deal,
-        name: 'Deal'
+        name: 'Buy'
     }
-].map(link => ({
-    ...link,
-    component: withSnackbar(link.component, link.name)
-}));
-
-export const loggedInUrls = [
 ].map(link => ({
     ...link,
     component: withSnackbar(link.component, link.name)

@@ -17,13 +17,14 @@ class UserManager(BaseUserManager):
         user = self.model(**details)
         user.set_password(password)
         user.save(using=self._db)
-        Block.create_block(user.detail())
+        Block.create_block(user.detail(), 'Create user')
         return user
 
 
 class Block(models.Model):
     previous_hash = models.TextField()
     hash = models.TextField()
+    block_type = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = models.Manager()
@@ -32,13 +33,13 @@ class Block(models.Model):
         return {
             'previous_hash': self.previous_hash,
             'hash': self.hash,
-            'created_at': str(self.created_at)
+            'block_type': self.block_type,
+            'created_at': str(self.created_at),
         }
 
     @staticmethod
-    def create_block(data):
+    def create_block(data, block_type):
         last_block = Block.objects.last()
-        print(data)
         if not last_block:
             last_hash = '0'
             last_detail = dict()
@@ -46,11 +47,11 @@ class Block(models.Model):
             last_hash = last_block.hash
             last_detail = last_block.detail()
         last_detail.update({'new_hash': get_hash(data)})
-        Block.objects.create(previous_hash=last_hash, hash=get_hash(last_detail))
+        Block.objects.create(previous_hash=last_hash, hash=get_hash(last_detail), block_type=block_type)
 
     @staticmethod
     def create_genesis_block():
-        Block.create_block(0)
+        Block.create_block(0, 'Genesis block')
 
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -73,14 +74,28 @@ class User(AbstractBaseUser, PermissionsMixin):
         }
 
     def add_asset(self, asset):
+        if 'prev_owner' in asset:
+            asset['prev_owner'] = User.objects.get(email=asset['prev_owner'])
+        else:
+            asset['prev_owner'] = None
+        if Asset.objects.filter(name=asset['name'], owner=self, prev_owner=asset['prev_owner']).exists():
+            old_asset = Asset.objects.get(name=asset['name'], owner=self, prev_owner=asset['prev_owner'])
+            old_asset.quantity += int(asset['quantity'])
+            old_asset.price = float(asset['price'])
+            old_asset.storage_period = int(asset['storage_period'])
+            old_asset.season = asset['season']
+            old_asset.save()
+            Block.create_block(old_asset.detail(), 'Update asset')
+            return old_asset
         asset = Asset(**asset)
         asset.owner = self
         asset.save()
-        Block.create_block(asset.detail())
+        Block.create_block(asset.detail(), 'Create asset')
+        return asset
 
     def add_transaction(self, name, quantity, buyer):
-        txn = Transaction(seller=self, buyer=User.objects.get(email=buyer))
-        txn.create_transaction(name, quantity)
+        txn = Transaction(buyer=self, seller=User.objects.get(email=buyer))
+        return txn.create_transaction(name, quantity)
 
 
 class Asset(models.Model):
@@ -89,18 +104,28 @@ class Asset(models.Model):
     price = models.IntegerField()
     storage_period = models.IntegerField()
     season = models.TextField()
+    prev_owner = models.ForeignKey('User', related_name='prev_assets', to_field='email', on_delete=models.CASCADE, null=True)
     owner = models.ForeignKey('User', related_name='assets', to_field='email', on_delete=models.CASCADE)
 
     objects = models.Manager()
 
     def detail(self):
-        return {
+        detail_dict = {
             'name': self.name,
             'quantity': self.quantity,
             'price': self.price,
             'storage_period': self.storage_period,
             'season': self.season,
-            'owner': self.owner.detail()
+            'owner': self.owner.detail(),
+        }
+        if self.prev_owner:
+            return {
+                **detail_dict,
+                'prev_owner': self.prev_owner.detail()
+            }
+        return {
+            **detail_dict,
+            'prev_owner': None
         }
 
 
@@ -120,14 +145,17 @@ class Transaction(models.Model):
 
     def create_transaction(self, name, quantity):
         if not self.seller.assets.filter(name=name).exists:
-            return
+            return 'The seller doesnt have this asset'
         exchange = self.create_exchange(name, quantity)
         if isinstance(exchange, Asset):
             self.asset = json.dumps(self.update_balance(name, quantity, exchange))
             self.save()
-            Block.create_block(self.detail())
+            Block.create_block(self.detail(), 'Create transaction')
+            return None
+        return exchange
 
     def create_exchange(self, name, quantity):
+        quantity = int(quantity)
         if (self.seller.user_type == 'Warehouse' and self.buyer.user_type == 'Distributor') or (
                 self.seller.user_type == 'Distributor' and self.buyer.user_type == 'Wholesale') or (
                 self.seller.user_type == 'Wholesale' and self.buyer.user_type == 'Retailer'):
@@ -140,30 +168,28 @@ class Transaction(models.Model):
                     return 'The seller doesn"t have enough of this asset'
                 if self.buyer.currency < quantity * asset.price:
                     return 'The buyer doesn"t have enough currency'
-                if not self.buyer.assets.filter(name=name).exists():
-                    return Asset(name=name, quantity=quantity, price=asset.price, storage_period=asset.storage_period,
-                                 season=asset.season, owner=self.buyer)
-                buyer_asset = self.buyer.assets.get(name=name)
-                buyer_asset.quantity += quantity
-                return buyer_asset
+                return self.buyer.add_asset(dict(name=name, quantity=quantity, price=asset.price, storage_period=asset.storage_period,
+                season=asset.season, owner=self.buyer, prev_owner=asset.owner.email))
             except Exception as e:
-                print(f'Create exchange error: {e}')
+                return f'Create exchange error: {e}'
         else:
             return 'This exchange is not possible'
 
     def update_balance(self, name, quantity, update_obj):
+        quantity = int(quantity)
         try:
             buyer = update_obj.owner
             asset = self.seller.assets.get(name=name)
-            amount = quantity * asset.price
+            amount = float(quantity * asset.price)
             buyer.currency -= amount
             self.seller.currency += amount
             asset.quantity -= quantity
             if not buyer.assets.filter(name=name).exists():
+                update_obj.prev_owner = asset.owner
                 update_obj.save()
-                Block.create_block(update_obj.detail())
+                Block.create_block(update_obj.detail(), 'Create asset')
             asset.save()
             buyer.save()
-            return update_obj
+            return update_obj.detail()
         except Exception as e:
-            print(f'Update balance error: {e}')
+            return f'Update balance error: {e}'

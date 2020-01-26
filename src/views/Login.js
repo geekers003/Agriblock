@@ -1,7 +1,8 @@
-import React, {useRef, useState} from 'react';
+import React, {useRef} from 'react';
 import {Avatar, Button, CssBaseline, TextField, Grid, Typography, makeStyles, Container} from '@material-ui/core';
 import {NavLink} from 'react-router-dom';
 import AccountCircleIcon from '@material-ui/icons/AccountCircle';
+import axios from 'axios'
 
 const useStyles = makeStyles(theme => ({
     '@global': {
@@ -32,12 +33,19 @@ export const Login = props => {
     const classes = useStyles();
     const email = useRef();
     const password = useRef();
-    const [creating, setcreating] = useState(false);
 
     const login = e => {
         e.preventDefault();
+        axios.post('http://127.0.0.1:8000/api/login/', {
+            email: email.current.value,
+            password: password.current.value
+        })
+        .then(res => {
+            console.log(res)
+        })
+        .catch(err => console.log(err))
     };
-   
+
     return (
         <Container component="main" maxWidth="xs">
             <CssBaseline />

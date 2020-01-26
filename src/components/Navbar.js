@@ -15,6 +15,8 @@ import MenuIcon from '@material-ui/icons/Menu';
 import IconButton from '@material-ui/core/IconButton';
 import {NavLink} from 'react-router-dom';
 
+import {primColors, secColors} from '../colors';
+import { loggedInUrls } from '../urls';
 
 //icons
 
@@ -60,10 +62,18 @@ const useStyles = makeStyles(theme => ({
         borderRadius: 4
     },
     activeTab: {
-
+        color: primColors.light,
+        backgroundColor: secColors.main,
+        '&:hover': {
+            color: secColors.main,
+            backgroundColor: primColors.light
+        }
     },
     list: {
         padding: 0
+    },
+    name: {
+        paddingTop: 15
     }
 }));
 
@@ -81,6 +91,7 @@ export const Navbar = props => {
     const drawer = (
         <div>
             <div className={classes.toolbar}>
+                <Typography variant="h6" className={classes.name}>{tabs[0] == loggedInUrls[0] ? localStorage.getItem('email') : ''}</Typography>
             </div>
             <List className={classes.list}>
                 {tabs.map((tab, index) => (
@@ -120,7 +131,7 @@ export const Navbar = props => {
                         <MenuIcon />
                     </IconButton>
                     <Typography variant="h6" noWrap>
-                        Agri Block
+                        AgriBlock
                     </Typography>
                 </Toolbar>
             </AppBar>

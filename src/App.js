@@ -9,6 +9,8 @@ const App = () => {
     const [value, setValue] = useState(0);
   
     document.title = `AgriBlock - ${loggedIn ? loggedInUrls[value].name : loggedOutUrls[value].name}`;
+    if (window.localStorage.getItem('email') !== null && !loggedIn) setLoggedIn(true)
+    else if (window.localStorage.getItem('email') === null && loggedIn) setLoggedIn(false)
     return (
         <>
             <Router>
