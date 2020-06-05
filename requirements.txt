@@ -2,7 +2,7 @@ asgiref==3.2.3
 cbor2==5.0.1
 certifi==2019.11.28
 chardet==3.0.4
-Django==3.0.2
+Django==3.0.7
 django-cors-headers==3.2.1
 idna==2.8
 pkg-resources==0.0.0
