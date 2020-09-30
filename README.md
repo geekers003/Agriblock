@@ -23,5 +23,9 @@ A blockchain based app to help the agricultute industry to ensure the proper tra
  # How  farmers will use it ?
  **we have made this App from farmer's point of view , we have simplified the whole UI/UX system in  such a way that with   single click the farmer can do the whole transaction process with full ease and security.**
  
+## important note 
+ **:star:**  this **Repo** if you like it !
+ 
+## Contributing
 
-
+Contributions are welcome! Please feel free to submit a Pull Request.
